@@ -36,6 +36,7 @@ export interface BlogPost {
   title: string;
   date: string;
   excerpt: string;
+  authorName: string;
   body: any; // Contentful rich text document
   imageUrl?: string;
   imageAlt?: string;
@@ -93,8 +94,17 @@ function parsePost(item: any, includes?: any): BlogPost | null {
     typeof item.fields.slug === "string" ? item.fields.slug.trim() : "";
   const title =
     typeof item.fields.title === "string" ? item.fields.title.trim() : "";
+  const excerpt =
+    typeof item.fields.excerpt === "string"
+      ? item.fields.excerpt
+      : typeof item.fields.summary === "string"
+        ? item.fields.summary
+        : "";
+  const authorName =
+    typeof item.fields.authorName === "string" ? item.fields.authorName : "";
+  const body = item.fields.body ?? item.fields.blogText ?? null;
 
-  if (!slug || !title) {
+  if (!slug || !title || !body) {
     return null;
   }
 
@@ -102,8 +112,9 @@ function parsePost(item: any, includes?: any): BlogPost | null {
     slug,
     title,
     date: item.fields.date || item.sys.createdAt,
-    excerpt: item.fields.excerpt || "",
-    body: item.fields.body,
+    excerpt,
+    authorName,
+    body,
     imageUrl: normalizeAssetUrl(imageAsset?.fields?.file?.url),
     imageAlt:
       imageAsset?.fields?.description ||

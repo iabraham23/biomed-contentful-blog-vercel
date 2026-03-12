@@ -78,6 +78,19 @@ export default async function PostPage({
         })}
       </time>
 
+      {post.authorName && (
+        <p
+          style={{
+            color: "#444",
+            fontSize: "0.95rem",
+            marginTop: "-1.25rem",
+            marginBottom: "2rem",
+          }}
+        >
+          By {post.authorName}
+        </p>
+      )}
+
       {post.imageUrl && (
         <img
           src={post.imageUrl}
