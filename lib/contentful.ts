@@ -3,6 +3,21 @@ const ACCESS_TOKEN = process.env.CONTENTFUL_ACCESS_TOKEN!;
 
 const BASE_URL = `https://cdn.contentful.com/spaces/${SPACE_ID}/environments/master`;
 
+type ContentfulAsset = {
+  sys?: {
+    id?: string;
+    linkType?: string;
+    type?: string;
+  };
+  fields?: {
+    title?: string;
+    description?: string;
+    file?: {
+      url?: string;
+    };
+  };
+};
+
 async function fetchContentful(endpoint: string) {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
@@ -32,12 +47,19 @@ function normalizeAssetUrl(url?: string) {
   return url;
 }
 
-function buildAssetMap(includes?: any) {
-  const assets = includes?.Asset || [];
-  return new Map(assets.map((asset: any) => [asset.sys.id, asset]));
+function buildAssetMap(includes?: any): Map<string, ContentfulAsset> {
+  const assets = (includes?.Asset || []) as ContentfulAsset[];
+  return new Map<string, ContentfulAsset>(
+    assets
+      .filter((asset) => typeof asset.sys?.id === "string")
+      .map((asset) => [asset.sys!.id!, asset])
+  );
 }
 
-function resolveAsset(field: any, assetMap: Map<string, any>) {
+function resolveAsset(
+  field: any,
+  assetMap: Map<string, ContentfulAsset>
+): ContentfulAsset | null {
   if (!field) return null;
   if (Array.isArray(field)) {
     for (const entry of field) {
