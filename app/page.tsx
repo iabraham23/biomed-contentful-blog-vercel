@@ -29,6 +29,20 @@ export default async function Home() {
             href={`/posts/${post.slug}`}
             style={{ textDecoration: "none", color: "inherit" }}
           >
+            {post.imageUrl && (
+              <img
+                src={post.imageUrl}
+                alt={post.imageAlt || post.title}
+                style={{
+                  width: "100%",
+                  maxHeight: "320px",
+                  objectFit: "cover",
+                  display: "block",
+                  marginBottom: "1rem",
+                  borderRadius: "0.5rem",
+                }}
+              />
+            )}
             <h2
               style={{
                 fontSize: "1.4rem",

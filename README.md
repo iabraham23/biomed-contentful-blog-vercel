@@ -37,3 +37,29 @@ Open [http://localhost:3000](http://localhost:3000).
 4. Deploy
 
 To add a subdomain like `blog.yoursite.com`, go to your Vercel project Settings → Domains and add it.
+
+## Main Site Integration
+
+If your main site needs to show the latest blog posts, fetch them from the blog app instead of querying Contentful directly from the static site:
+
+`https://blog.introbiomedicalimaging.org/api/posts`
+
+That endpoint returns the latest posts in a stable shape:
+
+```json
+{
+  "posts": [
+    {
+      "slug": "example-post",
+      "title": "Example Post",
+      "date": "2026-03-12T00:00:00.000Z",
+      "excerpt": "Short summary",
+      "imageUrl": "https://images.ctfassets.net/...",
+      "imageAlt": "Example image",
+      "url": "/posts/example-post"
+    }
+  ]
+}
+```
+
+This avoids coupling the main site to Contentful field names such as `image` vs `images`, and it keeps Contentful-specific logic inside the blog app.

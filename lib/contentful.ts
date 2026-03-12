@@ -22,21 +22,69 @@ export interface BlogPost {
   date: string;
   excerpt: string;
   body: any; // Contentful rich text document
+  imageUrl?: string;
+  imageAlt?: string;
+}
+
+function normalizeAssetUrl(url?: string) {
+  if (!url) return undefined;
+  if (url.startsWith("//")) return `https:${url}`;
+  return url;
+}
+
+function buildAssetMap(includes?: any) {
+  const assets = includes?.Asset || [];
+  return new Map(assets.map((asset: any) => [asset.sys.id, asset]));
+}
+
+function resolveAsset(field: any, assetMap: Map<string, any>) {
+  if (!field) return null;
+  if (Array.isArray(field)) {
+    for (const entry of field) {
+      const asset = resolveAsset(entry, assetMap);
+      if (asset) return asset;
+    }
+    return null;
+  }
+
+  if (field.fields?.file?.url) {
+    return field;
+  }
+
+  const assetId =
+    field.sys?.linkType === "Asset" || field.sys?.type === "Asset"
+      ? field.sys?.id
+      : undefined;
+  if (!assetId) return null;
+  return assetMap.get(assetId) || null;
 }
 
 function parsePost(item: any, includes?: any): BlogPost {
+  const assetMap = buildAssetMap(includes);
+  const imageField =
+    item.fields.image ??
+    item.fields.images ??
+    item.fields.heroImage ??
+    item.fields.featuredImage;
+  const imageAsset = resolveAsset(imageField, assetMap);
+
   return {
     slug: item.fields.slug,
     title: item.fields.title,
     date: item.fields.date || item.sys.createdAt,
     excerpt: item.fields.excerpt || "",
     body: item.fields.body,
+    imageUrl: normalizeAssetUrl(imageAsset?.fields?.file?.url),
+    imageAlt:
+      imageAsset?.fields?.description ||
+      imageAsset?.fields?.title ||
+      item.fields.title,
   };
 }
 
 export async function getAllPosts(): Promise<BlogPost[]> {
   const data = await fetchContentful(
-    `/entries?content_type=blogPost&order=-fields.date`
+    `/entries?content_type=blogPost&order=-fields.date&include=2`
   );
   return (data.items || []).map((item: any) => parsePost(item, data.includes));
 }
@@ -45,7 +93,9 @@ export async function getPostBySlug(
   slug: string
 ): Promise<BlogPost | null> {
   const data = await fetchContentful(
-    `/entries?content_type=blogPost&fields.slug=${slug}&limit=1`
+    `/entries?content_type=blogPost&fields.slug=${encodeURIComponent(
+      slug
+    )}&limit=1&include=2`
   );
   if (!data.items || data.items.length === 0) return null;
   return parsePost(data.items[0], data.includes);

@@ -78,6 +78,21 @@ export default async function PostPage({
         })}
       </time>
 
+      {post.imageUrl && (
+        <img
+          src={post.imageUrl}
+          alt={post.imageAlt || post.title}
+          style={{
+            width: "100%",
+            maxHeight: "420px",
+            objectFit: "cover",
+            display: "block",
+            marginBottom: "2rem",
+            borderRadius: "0.5rem",
+          }}
+        />
+      )}
+
       <div>{documentToReactComponents(post.body, richTextOptions)}</div>
     </article>
   );
