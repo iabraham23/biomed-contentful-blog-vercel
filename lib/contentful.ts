@@ -81,7 +81,7 @@ function resolveAsset(
   return assetMap.get(assetId) || null;
 }
 
-function parsePost(item: any, includes?: any): BlogPost {
+function parsePost(item: any, includes?: any): BlogPost | null {
   const assetMap = buildAssetMap(includes);
   const imageField =
     item.fields.image ??
@@ -89,10 +89,18 @@ function parsePost(item: any, includes?: any): BlogPost {
     item.fields.heroImage ??
     item.fields.featuredImage;
   const imageAsset = resolveAsset(imageField, assetMap);
+  const slug =
+    typeof item.fields.slug === "string" ? item.fields.slug.trim() : "";
+  const title =
+    typeof item.fields.title === "string" ? item.fields.title.trim() : "";
+
+  if (!slug || !title) {
+    return null;
+  }
 
   return {
-    slug: item.fields.slug,
-    title: item.fields.title,
+    slug,
+    title,
     date: item.fields.date || item.sys.createdAt,
     excerpt: item.fields.excerpt || "",
     body: item.fields.body,
@@ -100,7 +108,7 @@ function parsePost(item: any, includes?: any): BlogPost {
     imageAlt:
       imageAsset?.fields?.description ||
       imageAsset?.fields?.title ||
-      item.fields.title,
+      title,
   };
 }
 
@@ -108,7 +116,9 @@ export async function getAllPosts(): Promise<BlogPost[]> {
   const data = await fetchContentful(
     `/entries?content_type=blogPost&order=-fields.date&include=2`
   );
-  return (data.items || []).map((item: any) => parsePost(item, data.includes));
+  return (data.items || [])
+    .map((item: any) => parsePost(item, data.includes))
+    .filter((post: BlogPost | null): post is BlogPost => post !== null);
 }
 
 export async function getPostBySlug(
