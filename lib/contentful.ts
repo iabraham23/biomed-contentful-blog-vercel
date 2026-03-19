@@ -21,7 +21,7 @@ type ContentfulAsset = {
 async function fetchContentful(endpoint: string) {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
-    next: { revalidate: 60 }, // revalidate every 60 seconds
+    next: { revalidate: 60 },
   });
 
   if (!res.ok) {
@@ -37,7 +37,7 @@ export interface BlogPost {
   date: string;
   excerpt: string;
   authorName: string;
-  body: any; // Contentful rich text document
+  body: any;
   imageUrl?: string;
   imageAlt?: string;
 }
@@ -62,6 +62,7 @@ function resolveAsset(
   assetMap: Map<string, ContentfulAsset>
 ): ContentfulAsset | null {
   if (!field) return null;
+
   if (Array.isArray(field)) {
     for (const entry of field) {
       const asset = resolveAsset(entry, assetMap);
@@ -78,35 +79,92 @@ function resolveAsset(
     field.sys?.linkType === "Asset" || field.sys?.type === "Asset"
       ? field.sys?.id
       : undefined;
+
   if (!assetId) return null;
+
   return assetMap.get(assetId) || null;
+}
+
+function hydrateRichTextAssets(
+  node: any,
+  assetMap: Map<string, ContentfulAsset>
+): any {
+  if (!node || typeof node !== "object") return node;
+
+  const clonedNode = { ...node };
+
+  // Resolve embedded asset blocks
+  if (
+    clonedNode.nodeType === "embedded-asset-block" &&
+    clonedNode.data?.target?.sys?.id
+  ) {
+    const assetId = clonedNode.data.target.sys.id;
+    const resolvedAsset = assetMap.get(assetId);
+
+    console.log("hydrateRichTextAssets embedded asset:", {
+      assetId,
+      found: !!resolvedAsset,
+      resolvedAsset,
+    });
+
+    if (resolvedAsset) {
+      clonedNode.data = {
+        ...clonedNode.data,
+        target: resolvedAsset,
+      };
+    }
+  }
+
+  if (Array.isArray(clonedNode.content)) {
+    clonedNode.content = clonedNode.content.map((child: any) =>
+      hydrateRichTextAssets(child, assetMap)
+    );
+  }
+
+  return clonedNode;
 }
 
 function parsePost(item: any, includes?: any): BlogPost | null {
   const assetMap = buildAssetMap(includes);
+
+  console.log("parsePost asset ids:", Array.from(assetMap.keys()));
+
   const imageField =
     item.fields.image ??
     item.fields.images ??
     item.fields.heroImage ??
     item.fields.featuredImage;
+
   const imageAsset = resolveAsset(imageField, assetMap);
+
   const slug =
     typeof item.fields.slug === "string" ? item.fields.slug.trim() : "";
+
   const title =
     typeof item.fields.title === "string" ? item.fields.title.trim() : "";
+
   const excerpt =
     typeof item.fields.excerpt === "string"
       ? item.fields.excerpt
       : typeof item.fields.summary === "string"
         ? item.fields.summary
         : "";
+
   const authorName =
     typeof item.fields.authorName === "string" ? item.fields.authorName : "";
-  const body = item.fields.body ?? item.fields.blogText ?? null;
 
-  if (!slug || !title || !body) {
+  const rawBody = item.fields.body ?? item.fields.blogText ?? null;
+
+  if (!slug || !title || !rawBody) {
     return null;
   }
+
+  const body = hydrateRichTextAssets(rawBody, assetMap);
+
+  console.log(
+    "parsePost hydrated body:",
+    JSON.stringify(body, null, 2)
+  );
 
   return {
     slug,
@@ -125,8 +183,14 @@ function parsePost(item: any, includes?: any): BlogPost | null {
 
 export async function getAllPosts(): Promise<BlogPost[]> {
   const data = await fetchContentful(
-    `/entries?content_type=blogPost&order=-fields.date&include=2`
+    `/entries?content_type=blogPost&order=-fields.date&include=10`
   );
+
+  console.log(
+    "getAllPosts includes assets:",
+    JSON.stringify(data.includes?.Asset || [], null, 2)
+  );
+
   return (data.items || [])
     .map((item: any) => parsePost(item, data.includes))
     .filter((post: BlogPost | null): post is BlogPost => post !== null);
@@ -138,8 +202,15 @@ export async function getPostBySlug(
   const data = await fetchContentful(
     `/entries?content_type=blogPost&fields.slug=${encodeURIComponent(
       slug
-    )}&limit=1&include=2`
+    )}&limit=1&include=10`
   );
+
+  console.log(
+    "getPostBySlug includes assets:",
+    JSON.stringify(data.includes?.Asset || [], null, 2)
+  );
+
   if (!data.items || data.items.length === 0) return null;
+
   return parsePost(data.items[0], data.includes);
 }
