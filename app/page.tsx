@@ -12,7 +12,7 @@ export default async function Home() {
       </div>
     );
   }
-
+// testing 
   return (
     <div>
       <h1 style={{ fontSize: "2rem", marginBottom: "2rem" }}>All Posts</h1>
