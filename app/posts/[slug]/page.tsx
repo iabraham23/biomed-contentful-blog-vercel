@@ -38,15 +38,37 @@ const richTextOptions = {
     ),
 
     [BLOCKS.EMBEDDED_ASSET]: (node: any) => {
-      const { title, file, description } = node.data.target.fields || {};
+      console.log("EMBEDDED_ASSET node:", node);
+      console.log(
+        "EMBEDDED_ASSET target fields:",
+        node?.data?.target?.fields
+      );
+
+      const { title, file, description } = node?.data?.target?.fields || {};
       const imageUrl = file?.url;
 
-      if (!imageUrl) return null;
+      console.log("EMBEDDED_ASSET parsed values:", {
+        title,
+        description,
+        file,
+        imageUrl,
+      });
+
+      if (!imageUrl) {
+        console.log("EMBEDDED_ASSET: no imageUrl found, returning null");
+        return null;
+      }
+
+      const finalUrl = imageUrl.startsWith("//")
+        ? `https:${imageUrl}`
+        : imageUrl;
+
+      console.log("EMBEDDED_ASSET finalUrl:", finalUrl);
 
       return (
         <figure style={{ margin: "2rem 0" }}>
           <img
-            src={imageUrl.startsWith("//") ? `https:${imageUrl}` : imageUrl}
+            src={finalUrl}
             alt={description || title || "Embedded image"}
             style={{
               width: "100%",
@@ -75,6 +97,8 @@ const richTextOptions = {
 
 export async function generateStaticParams() {
   const posts = await getAllPosts();
+  console.log("generateStaticParams posts:", posts);
+
   return posts.map((post) => ({ slug: post.slug }));
 }
 
@@ -83,7 +107,11 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }) {
+  console.log("generateMetadata params:", params);
+
   const post = await getPostBySlug(params.slug);
+  console.log("generateMetadata post:", post);
+
   if (!post) return { title: "Post not found" };
   return { title: post.title, description: post.excerpt };
 }
@@ -93,7 +121,16 @@ export default async function PostPage({
 }: {
   params: { slug: string };
 }) {
+  console.log("PostPage params:", params);
+
   const post = await getPostBySlug(params.slug);
+  console.log("PostPage full post:", post);
+  console.log("PostPage post.body:", post?.body);
+  console.log(
+    "PostPage post.body stringified:",
+    JSON.stringify(post?.body, null, 2)
+  );
+
   if (!post) notFound();
 
   return (
@@ -118,7 +155,12 @@ export default async function PostPage({
       </h1>
 
       <time
-        style={{ color: "#666", fontSize: "0.9rem", display: "block", marginBottom: "2rem" }}
+        style={{
+          color: "#666",
+          fontSize: "0.9rem",
+          display: "block",
+          marginBottom: "2rem",
+        }}
         dateTime={post.date}
       >
         {new Date(post.date).toLocaleDateString("en-US", {
