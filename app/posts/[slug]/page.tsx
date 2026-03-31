@@ -1,6 +1,6 @@
 import { getAllPosts, getPostBySlug } from "@/lib/contentful";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import { BLOCKS } from "@contentful/rich-text-types";
+import { BLOCKS, INLINES } from "@contentful/rich-text-types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -8,97 +8,76 @@ import { notFound } from "next/navigation";
 const richTextOptions = {
   renderNode: {
     [BLOCKS.PARAGRAPH]: (_node: any, children: React.ReactNode) => (
-      <p style={{ marginBottom: "1rem", lineHeight: 1.7 }}>{children}</p>
+      <p>{children}</p>
+    ),
+
+    [BLOCKS.HEADING_1]: (_node: any, children: React.ReactNode) => (
+      <h1>{children}</h1>
     ),
 
     [BLOCKS.HEADING_2]: (_node: any, children: React.ReactNode) => (
-      <h2
-        style={{
-          fontSize: "1.5rem",
-          fontWeight: 600,
-          marginTop: "2rem",
-          marginBottom: "1rem",
-        }}
-      >
-        {children}
-      </h2>
+      <h2>{children}</h2>
     ),
 
     [BLOCKS.HEADING_3]: (_node: any, children: React.ReactNode) => (
-      <h3
-        style={{
-          fontSize: "1.25rem",
-          fontWeight: 600,
-          marginTop: "1.5rem",
-          marginBottom: "0.75rem",
-        }}
-      >
-        {children}
-      </h3>
+      <h3>{children}</h3>
     ),
 
-    [BLOCKS.EMBEDDED_ASSET]: (node: any) => {
-      console.log("EMBEDDED_ASSET node:", node);
-      console.log(
-        "EMBEDDED_ASSET target fields:",
-        node?.data?.target?.fields
-      );
+    [BLOCKS.HEADING_4]: (_node: any, children: React.ReactNode) => (
+      <h4>{children}</h4>
+    ),
 
+    [BLOCKS.UL_LIST]: (_node: any, children: React.ReactNode) => (
+      <ul>{children}</ul>
+    ),
+
+    [BLOCKS.OL_LIST]: (_node: any, children: React.ReactNode) => (
+      <ol>{children}</ol>
+    ),
+
+    [BLOCKS.LIST_ITEM]: (_node: any, children: React.ReactNode) => (
+      <li>{children}</li>
+    ),
+
+    [BLOCKS.QUOTE]: (_node: any, children: React.ReactNode) => (
+      <blockquote>{children}</blockquote>
+    ),
+
+    [BLOCKS.HR]: () => <hr />,
+
+    [BLOCKS.EMBEDDED_ASSET]: (node: any) => {
       const { title, file, description } = node?.data?.target?.fields || {};
       const imageUrl = file?.url;
 
-      console.log("EMBEDDED_ASSET parsed values:", {
-        title,
-        description,
-        file,
-        imageUrl,
-      });
-
-      if (!imageUrl) {
-        console.log("EMBEDDED_ASSET: no imageUrl found, returning null");
-        return null;
-      }
+      if (!imageUrl) return null;
 
       const finalUrl = imageUrl.startsWith("//")
         ? `https:${imageUrl}`
         : imageUrl;
 
-      console.log("EMBEDDED_ASSET finalUrl:", finalUrl);
-
       return (
-        <figure style={{ margin: "2rem 0" }}>
+        <figure>
           <img
             src={finalUrl}
             alt={description || title || "Embedded image"}
-            style={{
-              width: "100%",
-              height: "auto",
-              display: "block",
-              borderRadius: "0.5rem",
-            }}
           />
           {(description || title) && (
-            <figcaption
-              style={{
-                marginTop: "0.75rem",
-                fontSize: "0.9rem",
-                color: "#666",
-                textAlign: "center",
-              }}
-            >
-              {description || title}
-            </figcaption>
+            <figcaption>{description || title}</figcaption>
           )}
         </figure>
       );
     },
+
+    [INLINES.HYPERLINK]: (node: any, children: React.ReactNode) => (
+      <a href={node.data.uri} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
   },
 };
 
 export async function generateStaticParams() {
   const posts = await getAllPosts();
-  console.log("generateStaticParams posts:", posts);
-
   return posts.map((post) => ({ slug: post.slug }));
 }
 
@@ -107,11 +86,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }) {
-  console.log("generateMetadata params:", params);
-
   const post = await getPostBySlug(params.slug);
-  console.log("generateMetadata post:", post);
-
   if (!post) return { title: "Post not found" };
   return { title: post.title, description: post.excerpt };
 }
@@ -121,84 +96,48 @@ export default async function PostPage({
 }: {
   params: { slug: string };
 }) {
-  console.log("PostPage params:", params);
-
   const post = await getPostBySlug(params.slug);
-  console.log("PostPage full post:", post);
-  console.log("PostPage post.body:", post?.body);
-  console.log(
-    "PostPage post.body stringified:",
-    JSON.stringify(post?.body, null, 2)
-  );
-
   if (!post) notFound();
 
   return (
-    <article>
-      <Link
-        href="/"
-        style={{ color: "#666", textDecoration: "none", fontSize: "0.9rem" }}
-      >
+    <div className="post-article-wrapper">
+      <Link href="/" className="post-article__back">
         ← Back to all posts
       </Link>
 
-      <h1
-        style={{
-          fontSize: "2.2rem",
-          fontWeight: 700,
-          marginTop: "1.5rem",
-          marginBottom: "0.5rem",
-          lineHeight: 1.2,
-        }}
-      >
-        {post.title}
-      </h1>
+      <article>
+        <header className="post-article__header">
+          <h1 className="post-article__title">{post.title}</h1>
+          <div className="post-article__meta-row">
+            <time className="post-article__date" dateTime={post.date}>
+              {new Date(post.date).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </time>
+            {post.authorName && (
+              <span className="post-article__author">By {post.authorName}</span>
+            )}
+          </div>
+        </header>
 
-      <time
-        style={{
-          color: "#666",
-          fontSize: "0.9rem",
-          display: "block",
-          marginBottom: "2rem",
-        }}
-        dateTime={post.date}
-      >
-        {new Date(post.date).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
-      </time>
+        {post.imageUrl && (
+          <div className="post-article__hero">
+            <img src={post.imageUrl} alt={post.imageAlt || post.title} />
+          </div>
+        )}
 
-      {post.authorName && (
-        <p
-          style={{
-            color: "#444",
-            fontSize: "0.95rem",
-            marginTop: "-1.25rem",
-            marginBottom: "2rem",
-          }}
-        >
-          By {post.authorName}
-        </p>
-      )}
+        <div className="post-content">
+          {documentToReactComponents(post.body, richTextOptions)}
+        </div>
 
-      {post.imageUrl && (
-        <img
-          src={post.imageUrl}
-          alt={post.imageAlt || post.title}
-          style={{
-            width: "100%",
-            maxHeight: "420px",
-            objectFit: "cover",
-            display: "block",
-            marginBottom: "2rem",
-            borderRadius: "0.5rem",
-          }}
-        />
-      )}
-
-      <div>{documentToReactComponents(post.body, richTextOptions)}</div>
-    </article>
+        <footer className="post-article__footer">
+          <Link href="/" className="post-article__back">
+            ← Back to all posts
+          </Link>
+        </footer>
+      </article>
+    </div>
   );
 }
