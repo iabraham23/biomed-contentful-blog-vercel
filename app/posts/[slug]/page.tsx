@@ -122,11 +122,11 @@ export default async function PostPage({
           </div>
         </header>
 
-        {post.imageUrl && (
+        {/* {post.imageUrl && (
           <div className="post-article__hero">
             <img src={post.imageUrl} alt={post.imageAlt || post.title} />
           </div>
-        )}
+        )} */}
 
         <div className="post-content">
           {documentToReactComponents(post.body, richTextOptions)}
